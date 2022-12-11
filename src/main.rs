@@ -1,33 +1,52 @@
+use std::io;
+
+use crate::records::RecordFile;
 use clap::{Parser, Subcommand};
+use version::GoVersion;
 
 #[macro_use]
 extern crate lazy_static;
 
+mod records;
 mod version;
 
-/// Simple program to greet a person
+/// Go version manager and multiplexor
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// List the set of values that
+    /// List the set of available Go versions, as well as those that are installed.
     List,
-    /// Update the latest version of Go
+    /// Update all versions of Go to their latest patch releases.
     Update,
+    /// Install a new version of Go.
+    Install {
+        /// The version of Go that will be installed
+        version: GoVersion,
+    },
+    /// Enable the given go version. This can be used to roll back updates, for example.
+    Enable {
+        /// The version of Go that will be enabled
+        version: GoVersion,
+    },
+    /// Remove old Go versions.
+    Clean,
 }
 
 fn main() {
     let args = Args::parse();
 
     match args.command {
-        Some(Commands::List) => list_versions(),
-        Some(Commands::Update) => update(),
-        None => println!("f"),
+        Commands::List => list_versions(),
+        Commands::Update => update(),
+        Commands::Install { version } => install(version),
+        Commands::Enable { version } => enable(version),
+        Commands::Clean => println!("Clean"),
     }
 }
 
@@ -75,5 +94,41 @@ fn update() {
     } else {
         println!("Already up to date with version {}", current_version);
         return;
+    }
+}
+
+fn install(v: GoVersion) {
+    let mut rf = RecordFile::load().expect("");
+    rf.installed.insert(v);
+
+    let available = match version::available_go_versions() {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("{}", e);
+            return;
+        }
+    };
+
+    let res = available
+        .get(&v)
+        .ok_or_else(|| format!("Version {} not available for download", v))
+        .and_then(|f| version::download_version(v, f));
+    match res {
+        Ok(_) => {
+            if let Err(e) = rf.store() {
+                eprintln!("Unable to write out version info file {}", e);
+            };
+            println!("{} installed successfully", v);
+        }
+        Err(e) => eprintln!("{}", e),
+    }
+}
+
+fn enable(version: GoVersion) {
+    if let Err(e) = records::enable_version(version) {
+        match e.kind() {
+            io::ErrorKind::NotFound => eprintln!("Version {} is not installed.", version),
+            _ => eprintln!("{}", e),
+        }
     }
 }
