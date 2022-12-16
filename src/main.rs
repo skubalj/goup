@@ -122,23 +122,22 @@ fn list_versions() -> Result<(), Box<dyn Error>> {
 fn update() -> Result<(), Box<dyn Error>> {
     let records = VersionFile::load()?;
     let available = version::available_go_versions()?;
-    let latest = *available
-        .keys()
-        .max()
+    let (&latest_version, file_info) = available
+        .last_key_value()
         .ok_or("Found no available go versions")?;
 
-    if records.installed.contains(&latest) {
-        enable(latest)?;
-        println!("The latest version is {}", latest);
+    if records.installed.contains(&latest_version) {
+        enable(latest_version)?;
+        println!("The latest version is {}", latest_version);
         println!("Already up to date!");
         return Ok(());
     } else {
-        println!("Version {} is available", latest);
+        println!("Version {} is available", latest_version);
     }
 
-    version::download_version(latest, available.get(&latest).unwrap())?;
-    version::enable_version(latest)?;
-    println!("Installed and enabled version {}", latest);
+    version::download_version(latest_version, file_info)?;
+    version::enable_version(latest_version)?;
+    println!("Installed and enabled version {}", latest_version);
     println!(
         "Use 'goup clean' to remove old versions, or 'goup enable {}' to roll back",
         records.enabled.unwrap_or_default()
