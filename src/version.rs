@@ -180,7 +180,7 @@ pub fn download_version(version: GoVersion, file: &FileInfo) -> Result<(), Strin
     Ok(())
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 pub fn enable_version(version: GoVersion) -> io::Result<()> {
     let mut records_file = VersionFile::load()?;
     if !records_file.installed.contains(&version) {

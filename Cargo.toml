@@ -3,7 +3,11 @@ name = "goup"
 version = "0.1.0"
 authors = ["Joseph Skubal"]
 repository = "https://github.com/skubalj/goup"
+description = "Version management for Go a la rustup"
 edition = "2021"
+readme = "README.md"
+license = "MPL-2.0"
+categories = ["command-line-utilities", "development-tools"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
