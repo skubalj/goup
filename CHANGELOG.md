@@ -1,7 +1,7 @@
 Changelog
 =========
 
-## Version 0.1.1 ()
+## Version 0.1.1 (2023-02-19)
 * Added progress bar during downloads
 * Changed some dependencies
 
