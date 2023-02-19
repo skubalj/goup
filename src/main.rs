@@ -1,9 +1,9 @@
 use clap::{Parser, Subcommand};
+use console::style;
 use std::collections::BTreeSet;
 use std::error::Error;
 use std::{fs, io};
 use version::{GoVersion, VersionFile};
-use yansi::Paint;
 
 #[macro_use]
 extern crate lazy_static;
@@ -90,7 +90,7 @@ fn list_versions() -> Result<(), Box<dyn Error>> {
         let is_installed = installed.contains(v);
         let is_available = available.contains(v);
         let is_enabled = enabled.is_some() && *v == enabled.unwrap();
-        let is_pinned = pinned.contains(&v);
+        let is_pinned = pinned.contains(v);
 
         let bullet = if is_enabled {
             "*"
@@ -103,10 +103,10 @@ fn list_versions() -> Result<(), Box<dyn Error>> {
         let string = format!("{} {}{}", bullet, v, pinned_text);
 
         let paint = match (is_installed, is_available, is_enabled) {
-            (true, true, _) => Paint::green(string),
-            (true, false, true) => Paint::red(string),
-            (true, false, false) => Paint::yellow(string),
-            _ => Paint::default(string),
+            (true, true, _) => style(string).green(),
+            (true, false, true) => style(string).red(),
+            (true, false, false) => style(string).yellow(),
+            _ => style(string),
         };
 
         versions.push(paint);

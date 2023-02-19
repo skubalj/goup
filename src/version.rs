@@ -1,10 +1,12 @@
-use directories::UserDirs;
 use flate2::read::GzDecoder;
+use home::home_dir;
+use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
 use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Display};
+use std::io::Read;
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
 use std::path::PathBuf;
@@ -65,23 +67,21 @@ impl FromStr for GoVersion {
         }
 
         match PARSING_REGEX.captures(s) {
-            Some(x) => {
-                return Ok(Self {
-                    major: x
-                        .get(1)
-                        .map(|x| x.as_str().parse::<u32>().unwrap())
-                        .unwrap_or_default(),
-                    minor: x
-                        .get(2)
-                        .map(|x| x.as_str().parse::<u32>().unwrap())
-                        .unwrap_or_default(),
-                    patch: x
-                        .get(3)
-                        .map(|x| x.as_str().parse::<u32>().unwrap())
-                        .unwrap_or_default(),
-                });
-            }
-            None => return Err("unable to parse go version"),
+            Some(x) => Ok(Self {
+                major: x
+                    .get(1)
+                    .map(|x| x.as_str().parse::<u32>().unwrap())
+                    .unwrap_or_default(),
+                minor: x
+                    .get(2)
+                    .map(|x| x.as_str().parse::<u32>().unwrap())
+                    .unwrap_or_default(),
+                patch: x
+                    .get(3)
+                    .map(|x| x.as_str().parse::<u32>().unwrap())
+                    .unwrap_or_default(),
+            }),
+            None => Err("unable to parse go version"),
         }
     }
 }
@@ -142,6 +142,48 @@ pub struct FileInfo {
     pub kind: String,
 }
 
+/// A shim that will count the number of bytes read out of the given reader and display it
+/// on a progress bar.
+#[derive(Debug)]
+struct ByteCounter<R: Read> {
+    inner: R,
+    bar: ProgressBar,
+}
+
+impl<R: Read> ByteCounter<R> {
+    pub fn new(inner: R, total_bytes: u64) -> Self {
+        let bar = ProgressBar::new(total_bytes).with_style(
+            ProgressStyle::with_template(
+                "[{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes}",
+            )
+            .unwrap()
+            .progress_chars("=> "),
+        );
+
+        Self { inner, bar }
+    }
+}
+
+impl<R: Read> Read for ByteCounter<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let res = self.inner.read(buf);
+        if let Ok(size) = res {
+            self.bar.inc(size as u64);
+        }
+        res
+    }
+}
+
+impl<R: Read> Drop for ByteCounter<R> {
+    fn drop(&mut self) {
+        if self.bar.position() >= self.bar.length().unwrap_or_default() {
+            self.bar.finish();
+        } else {
+            self.bar.abandon();
+        }
+    }
+}
+
 /// Get the set of available versions of Go from Go's website.
 pub fn available_go_versions() -> Result<BTreeMap<GoVersion, FileInfo>, String> {
     let available = ureq::get("https://go.dev/dl/?mode=json")
@@ -171,7 +213,7 @@ pub fn download_version(version: GoVersion, file: &FileInfo) -> Result<(), Strin
             .call()
             .map_err(|_| "Failed to get file from go.dev")?
             .into_reader();
-        Archive::new(GzDecoder::new(stream_reader))
+        Archive::new(GzDecoder::new(ByteCounter::new(stream_reader, file.size)))
             .unpack(install_dir(version).map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())?;
         version_file.store().map_err(|e| e.to_string())?;
@@ -221,7 +263,7 @@ pub fn remove_version(version: GoVersion) -> io::Result<()> {
     if records_file.enabled.is_some() && records_file.enabled.unwrap() == version {
         records_file.enabled = None;
         println!(
-            "Version {} is currently enabled. Use 'goup enable' to select another.",
+            "Version {} was enabled. Use 'goup enable' to select another.",
             version
         );
     }
@@ -260,9 +302,9 @@ fn arch() -> &'static str {
 
 /// The directory that goup uses to install Go versions and manage its internal config
 fn goup_dir() -> io::Result<PathBuf> {
-    UserDirs::new()
+    home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "unable to find home dir"))
-        .map(|dirs| dirs.home_dir().join(".goup"))
+        .map(|home| home.join(".goup"))
 }
 
 /// The directory that the provided Go version should be installed into

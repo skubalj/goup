@@ -49,9 +49,10 @@ export PATH="$GOROOT/bin"
 Many of the limitations of `goup` are related to the project scope. This is a
 relatively small utility and it does what I need it to do.
 
-- Currently, `goup` is only developed for linux.
-- We download binaries from go.dev, so only the current and previous versions
-  are available.
+- Currently, `goup` is only developed for Linux. Theoretically, it should work
+  for Mac and other Unix systems as well. Windows is explicitly not supported.
+- We download binaries from [go.dev](https://go.dev/dl), so only the currently
+  supported versions are available.
 - We cannot build from source, and only have support built for architectures
   like x86, x86_64, and aarch64.
 - `goup` will always use the `~/.goup` folder for its files, and does not
@@ -64,15 +65,16 @@ relatively small utility and it does what I need it to do.
 | Crate       | Owner / Maintainer                        | License           |
 | ----------- | ----------------------------------------- | ----------------- |
 | clap        | Kevin K.                                  | MIT or Apache-2.0 |
-| directories | soc                                       | MIT or Apache-2.0 |
+| console     | Armin Ronacher and Pavan Kumar Sunkara    | MIT               |
 | flate2      | Alex Crichton and Josh Triplett           | MIT or Apache-2.0 |
+| home        | Brian Anderson                            | MIT or Apache-2.0 |
+| indicatif   | Armin Ronacher and Dirkjan Ochtman        | MIT               |
 | lazy_static | Marvin Lobel                              | MIT or Apache-2.0 |
 | regex       | rust-lang/libs                            | MIT or Apache-2.0 |
 | serde       | David Tolnay                              | MIT or Apache-2.0 |
 | serde_json  | David Tolnay                              | MIT or Apache-2.0 |
 | tar         | Alex Crichton                             | MIT or Apache-2.0 |
 | ureq        | Martin Algesten and Jacob Hoffman-Andrews | MIT or Apache-2.0 |
-| yansi       | Sergio Benitez                            | MIT or Apache-2.0 |
 
 And a special thanks is due to the rustup team for inspiration!
 
