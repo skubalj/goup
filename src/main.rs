@@ -5,9 +5,6 @@ use std::error::Error;
 use std::{fs, io};
 use version::{GoVersion, VersionFile};
 
-#[macro_use]
-extern crate lazy_static;
-
 mod version;
 
 /// Go version manager and multiplexer

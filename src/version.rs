@@ -11,8 +11,11 @@ use std::io::Read;
 use std::os::unix::fs::symlink;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::OnceLock;
 use std::{env, fs, io};
 use tar::Archive;
+
+static PARSING_REGEX: OnceLock<Regex> = OnceLock::new();
 
 /// A semantic version tag, in Go format
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -62,11 +65,10 @@ impl FromStr for GoVersion {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref PARSING_REGEX: Regex = Regex::new(r"go(\d+)\.(\d+)(?:\.(\d+))?").unwrap();
-        }
+        let regex =
+            PARSING_REGEX.get_or_init(|| Regex::new(r"go(\d+)\.(\d+)(?:\.(\d+))?").unwrap());
 
-        match PARSING_REGEX.captures(s) {
+        match regex.captures(s) {
             Some(x) => Ok(Self {
                 major: x
                     .get(1)
