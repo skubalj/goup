@@ -1,15 +1,16 @@
+use anyhow::{anyhow, Context, Result};
 use flate2::read::GzDecoder;
-use home::home_dir;
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
 use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+use std::env::{var, VarError};
 use std::fmt::{self, Display};
 use std::io::Read;
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::OnceLock;
 use std::{env, fs, io};
@@ -102,27 +103,18 @@ pub struct VersionFile {
 }
 
 impl VersionFile {
-    pub fn load() -> io::Result<VersionFile> {
+    pub fn load() -> Result<VersionFile> {
         match fs::read_to_string(version_file()?) {
-            Ok(x) => serde_json::from_str(&x).map_err(|_| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "unable to parse version information file",
-                )
-            }),
+            Ok(x) => serde_json::from_str(&x).with_context(|| "Unable to parse version file"),
             Err(e) if matches!(e.kind(), io::ErrorKind::NotFound) => Ok(Default::default()),
-            Err(e) => Err(e),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
-    pub fn store(&self) -> io::Result<()> {
-        let payload = serde_json::to_string_pretty(&self).map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "unable to serialize record file",
-            )
-        })?;
-        fs::write(version_file()?, payload)
+    pub fn store(&self) -> Result<()> {
+        let payload = serde_json::to_string_pretty(&self)
+            .with_context(|| "Unable to serialize version file")?;
+        fs::write(version_file()?, payload).with_context(|| "Unable to write version file")
     }
 }
 
@@ -187,12 +179,12 @@ impl<R: Read> Drop for ByteCounter<R> {
 }
 
 /// Get the set of available versions of Go from Go's website.
-pub fn available_go_versions() -> Result<BTreeMap<GoVersion, FileInfo>, String> {
+pub fn available_go_versions() -> Result<BTreeMap<GoVersion, FileInfo>> {
     let available = ureq::get("https://go.dev/dl/?mode=json")
         .call()
-        .map_err(|_| "Failed to request version info")?
+        .with_context(|| "Failed to request version info")?
         .into_json::<Vec<VersionInfo>>()
-        .map_err(|_| "Unable to parse version info from remote")?
+        .with_context(|| "Unable to parse version info from remote")?
         .into_iter()
         .filter_map(|group| {
             group
@@ -206,41 +198,39 @@ pub fn available_go_versions() -> Result<BTreeMap<GoVersion, FileInfo>, String> 
     Ok(available)
 }
 
-pub fn download_version(version: GoVersion, file: &FileInfo) -> Result<(), String> {
-    let mut version_file = VersionFile::load().map_err(|e| e.to_string())?;
+pub fn download_version(version: GoVersion, file: &FileInfo) -> Result<()> {
+    let mut version_file = VersionFile::load()?;
     let needs_install = version_file.installed.insert(version);
 
     if needs_install {
         let stream_reader = ureq::get(&format!("https://go.dev/dl/{}", file.filename))
             .call()
-            .map_err(|_| "Failed to get file from go.dev")?
+            .with_context(|| "Failed to get version archive from go.dev")?
             .into_reader();
         Archive::new(GzDecoder::new(ByteCounter::new(stream_reader, file.size)))
-            .unpack(install_dir(version).map_err(|e| e.to_string())?)
-            .map_err(|e| e.to_string())?;
-        version_file.store().map_err(|e| e.to_string())?;
+            .unpack(install_dir(version)?)
+            .with_context(|| "Failed to unpack downloaded archive")?;
+        version_file.store()?;
     }
 
     Ok(())
 }
 
 #[cfg(unix)]
-pub fn enable_version(version: GoVersion) -> io::Result<()> {
+pub fn enable_version(version: GoVersion) -> Result<()> {
     let mut records_file = VersionFile::load()?;
     if !records_file.installed.contains(&version) {
-        return Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("Version {} is not installed", version),
-        ));
+        return Err(anyhow!("Version {} is not installed", version));
     }
 
     if let Err(e) = fs::remove_file(goup_dir()?.join("go")) {
         if !matches!(e.kind(), io::ErrorKind::NotFound) {
-            return Err(e);
+            return Err(anyhow!(e));
         }
     }
 
-    let res = symlink(install_dir(version)?.join("go"), goup_dir()?.join("go"));
+    let res = symlink(install_dir(version)?.join("go"), goup_dir()?.join("go"))
+        .with_context(|| "Unable to make symlink");
     if res.is_ok() {
         records_file.enabled = Some(version);
         records_file.store()?;
@@ -248,18 +238,12 @@ pub fn enable_version(version: GoVersion) -> io::Result<()> {
     res
 }
 
-pub fn remove_version(version: GoVersion) -> io::Result<()> {
+pub fn remove_version(version: GoVersion) -> Result<()> {
     let mut records_file = VersionFile::load()?;
     if !records_file.installed.remove(&version) {
-        return Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("Version {} is not installed", version),
-        ));
+        return Err(anyhow!("Version {} is not installed", version));
     } else if records_file.pinned.contains(&version) {
-        return Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            format!("Version {} is pinned", version),
-        ));
+        return Err(anyhow!("Version {} is pinned", version));
     }
 
     if records_file.enabled.is_some() && records_file.enabled.unwrap() == version {
@@ -275,7 +259,7 @@ pub fn remove_version(version: GoVersion) -> io::Result<()> {
     Ok(())
 }
 
-pub fn version_folders() -> io::Result<BTreeSet<GoVersion>> {
+pub fn version_folders() -> Result<BTreeSet<GoVersion>> {
     let mut versions = BTreeSet::new();
     for entry in fs::read_dir(goup_dir()?)? {
         let version = entry?
@@ -303,18 +287,20 @@ fn arch() -> &'static str {
 }
 
 /// The directory that goup uses to install Go versions and manage its internal config
-fn goup_dir() -> io::Result<PathBuf> {
-    home_dir()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "unable to find home dir"))
-        .map(|home| home.join(".goup"))
+fn goup_dir() -> Result<PathBuf> {
+    match var("GOPATH") {
+        Ok(p) => Ok(Path::new(&p).join("goup")),
+        Err(VarError::NotPresent) => Err(anyhow!("GOPATH variable is not set")),
+        Err(VarError::NotUnicode(_)) => Err(anyhow!("Unable to read GOPATH variable")),
+    }
 }
 
 /// The directory that the provided Go version should be installed into
-pub fn install_dir(version: GoVersion) -> io::Result<PathBuf> {
+pub fn install_dir(version: GoVersion) -> Result<PathBuf> {
     goup_dir().map(|p| p.join(format!("{}", version)))
 }
 
 /// The location of the file describing the versions installed and enabled
-fn version_file() -> io::Result<PathBuf> {
+fn version_file() -> Result<PathBuf> {
     goup_dir().map(|p| p.join("versions.json"))
 }

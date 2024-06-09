@@ -1,8 +1,8 @@
+use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
 use console::style;
 use std::collections::BTreeSet;
-use std::error::Error;
-use std::{fs, io};
+use std::fs;
 use version::{GoVersion, VersionFile};
 
 mod version;
@@ -72,7 +72,7 @@ fn main() {
     }
 }
 
-fn list_versions() -> Result<(), Box<dyn Error>> {
+fn list_versions() -> Result<()> {
     let VersionFile {
         enabled,
         installed,
@@ -116,12 +116,12 @@ fn list_versions() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn update() -> Result<(), Box<dyn Error>> {
+fn update() -> Result<()> {
     let records = VersionFile::load()?;
     let available = version::available_go_versions()?;
     let (&latest_version, file_info) = available
         .last_key_value()
-        .ok_or("Found no available go versions")?;
+        .ok_or_else(|| anyhow!("Found no available go versions"))?;
 
     if records.installed.contains(&latest_version) {
         enable(latest_version)?;
@@ -142,44 +142,36 @@ fn update() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn install(v: GoVersion) -> Result<(), Box<dyn Error>> {
+fn install(v: GoVersion) -> Result<()> {
     let mut rf = VersionFile::load()?;
     rf.installed.insert(v);
 
     version::available_go_versions()?
         .get(&v)
-        .ok_or_else(|| format!("Version {} not available for download", v))
+        .ok_or_else(|| anyhow!("Version {} not available for download", v))
         .and_then(|f| version::download_version(v, f))?;
 
     rf.store()
-        .map_err(|e| format!("Unable to write out version info file:  {}", e))?;
+        .with_context(|| "Unable to write out version file")?;
 
     println!("{} installed successfully", v);
     Ok(())
 }
 
-fn enable(version: GoVersion) -> Result<(), Box<dyn Error>> {
-    version::enable_version(version).map_err(|e| match e.kind() {
-        io::ErrorKind::NotFound => {
-            Box::<dyn Error>::from(format!("Version {} is not installed.", version))
-        }
-        _ => Box::new(e),
-    })
+fn enable(version: GoVersion) -> Result<()> {
+    version::enable_version(version)
 }
 
-fn remove(version: GoVersion) -> Result<(), Box<dyn Error>> {
+fn remove(version: GoVersion) -> Result<()> {
     version::remove_version(version)?;
     println!("{} uninstalled successfully", version);
     Ok(())
 }
 
-fn pin(version: GoVersion) -> Result<(), Box<dyn Error>> {
+fn pin(version: GoVersion) -> Result<()> {
     let mut version_file = VersionFile::load()?;
     if !version_file.installed.contains(&version) {
-        return Err(Box::<dyn Error>::from(format!(
-            "Version {} is not installed.",
-            version
-        )));
+        return Err(anyhow!("Version {} is not installed.", version));
     }
 
     version_file.pinned.insert(version);
@@ -187,14 +179,14 @@ fn pin(version: GoVersion) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn unpin(version: GoVersion) -> Result<(), Box<dyn Error>> {
+fn unpin(version: GoVersion) -> Result<()> {
     let mut version_file = VersionFile::load()?;
     version_file.pinned.remove(&version);
     version_file.store()?;
     Ok(())
 }
 
-fn clean() -> Result<(), Box<dyn Error>> {
+fn clean() -> Result<()> {
     let mut version_file = VersionFile::load()?;
     let folder_versions = version::version_folders()?;
 

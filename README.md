@@ -29,20 +29,18 @@ $ goup --help # get help and see all commands
 
 ## Setup
 
-Put the goup executable somewhere on your path. Some reasonable places might be
-`~/bin`, `~/.local/bin`, or `~/.goup/bin`. Remember to add the location to your
-path, if it is not there by default.
-
-You will need to set your `GOROOT` environment variable to point to the location
-where `goup` installs Go. You will also want to add the bin folder for your Go
-install to your path so that your shell can find the Go executable. You can do
-this by adding the following to your `.bashrc`:
+Setup can be automated by running the `install.sh` script from the root of this repository.
 
 ```bash
-# ~/.bashrc
-export GOROOT="$HOME/.goup/go"
-export PATH="$GOROOT/bin"
+git clone https://github.com/skubalj/goup.git
+cd goup
+./install.sh
 ```
+
+This script will install goup to `$GOPATH/bin`. You can customize the location of GOPATH by
+specifying the variable when running this script. As this script can be used to bootstrap a system
+with no existing go installation, it will create an environment variable file that can be called 
+from your `~/.bashrc` to configure your shell.
 
 ## Limitations
 
@@ -53,9 +51,9 @@ relatively small utility and it does what I need it to do.
   for Mac and other Unix systems as well. Windows is explicitly not supported.
 - We download binaries from [go.dev](https://go.dev/dl), so only the currently
   supported versions are available.
-- We cannot build from source, and only have support built for architectures
-  like x86, x86_64, and aarch64.
-- `goup` will always use the `~/.goup` folder for its files, and does not
+- We cannot build go from source, and the only architectures mapped are x86, 
+  x86_64, and aarch64.
+- `goup` will always use the `$GOPATH/goup` folder for its files, and does not
   provide a system-wide install.
 
 ## Acknowledgements
@@ -64,10 +62,10 @@ relatively small utility and it does what I need it to do.
 
 | Crate       | Owner / Maintainer                        | License           |
 | ----------- | ----------------------------------------- | ----------------- |
+| anyhow      | David Tolnay                              | MIT or Apache-2.0 |
 | clap        | Kevin K.                                  | MIT or Apache-2.0 |
 | console     | Armin Ronacher and Pavan Kumar Sunkara    | MIT               |
 | flate2      | Alex Crichton and Josh Triplett           | MIT or Apache-2.0 |
-| home        | Brian Anderson                            | MIT or Apache-2.0 |
 | indicatif   | Armin Ronacher and Dirkjan Ochtman        | MIT               |
 | lazy_static | Marvin Lobel                              | MIT or Apache-2.0 |
 | regex       | rust-lang/libs                            | MIT or Apache-2.0 |
@@ -82,4 +80,4 @@ And a special thanks is due to the rustup team for inspiration!
 
 This project is licensed under the Mozilla Public License V2.
 
-Joseph Skubal 2022-2023
+Joseph Skubal 2022-2024
