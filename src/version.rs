@@ -12,11 +12,12 @@ use std::io::Read;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use std::{env, fs, io};
 use tar::Archive;
 
-static PARSING_REGEX: OnceLock<Regex> = OnceLock::new();
+static PARSING_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"go(\d+)\.(\d+)(?:\.(\d+))?").unwrap());
 
 /// A semantic version tag, in Go format
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -31,7 +32,7 @@ impl Serialize for GoVersion {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&format!("{}", self))
+        serializer.serialize_str(self.to_string().as_str())
     }
 }
 
@@ -66,10 +67,7 @@ impl FromStr for GoVersion {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let regex =
-            PARSING_REGEX.get_or_init(|| Regex::new(r"go(\d+)\.(\d+)(?:\.(\d+))?").unwrap());
-
-        match regex.captures(s) {
+        match PARSING_REGEX.captures(s) {
             Some(x) => Ok(Self {
                 major: x
                     .get(1)
@@ -130,10 +128,10 @@ pub struct FileInfo {
     pub filename: String,
     pub os: String,
     pub arch: String,
-    pub version: String,
-    pub sha256: String,
+    // pub version: String,
+    // pub sha256: String,
     pub size: u64,
-    pub kind: String,
+    // pub kind: String,
 }
 
 /// A shim that will count the number of bytes read out of the given reader and display it
@@ -183,7 +181,8 @@ pub fn available_go_versions() -> Result<BTreeMap<GoVersion, FileInfo>> {
     let available = ureq::get("https://go.dev/dl/?mode=json")
         .call()
         .with_context(|| "Failed to request version info")?
-        .into_json::<Vec<VersionInfo>>()
+        .body_mut()
+        .read_json::<Vec<VersionInfo>>()
         .with_context(|| "Unable to parse version info from remote")?
         .into_iter()
         .filter_map(|group| {
@@ -203,13 +202,16 @@ pub fn download_version(version: GoVersion, file: &FileInfo) -> Result<()> {
     let needs_install = version_file.installed.insert(version);
 
     if needs_install {
-        let stream_reader = ureq::get(&format!("https://go.dev/dl/{}", file.filename))
+        let mut response_body = ureq::get(&format!("https://go.dev/dl/{}", file.filename))
             .call()
             .with_context(|| "Failed to get version archive from go.dev")?
-            .into_reader();
-        Archive::new(GzDecoder::new(ByteCounter::new(stream_reader, file.size)))
-            .unpack(install_dir(version)?)
-            .with_context(|| "Failed to unpack downloaded archive")?;
+            .into_body();
+        Archive::new(GzDecoder::new(ByteCounter::new(
+            response_body.as_reader(),
+            file.size,
+        )))
+        .unpack(install_dir(version)?)
+        .with_context(|| "Failed to unpack downloaded archive")?;
         version_file.store()?;
     }
 

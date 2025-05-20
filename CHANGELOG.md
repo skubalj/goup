@@ -1,6 +1,10 @@
 Changelog
 =========
 
+## Version 0.1.3 (2025-05-19)
+* Bump dependencies
+* Apply std lib updates since last version (eg: LazyLock)
+
 ## Version 0.1.2 (2024-06-09)
 * Moved goup directory to a subdirectoy within GOPATH (juliaup style)
 * Added install script for easy updates
