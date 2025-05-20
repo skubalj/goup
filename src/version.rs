@@ -39,7 +39,7 @@ impl Serialize for GoVersion {
 // Serde visitor for handling deserialization
 struct GoVersionVisitor;
 
-impl<'de> Visitor<'de> for GoVersionVisitor {
+impl Visitor<'_> for GoVersionVisitor {
     type Value = GoVersion;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

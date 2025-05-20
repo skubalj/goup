@@ -80,4 +80,4 @@ And a special thanks is due to the rustup team for inspiration!
 
 This project is licensed under the Mozilla Public License V2.
 
-Joseph Skubal 2022-2024
+Joseph Skubal 2022-2025
