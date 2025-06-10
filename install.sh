@@ -26,9 +26,26 @@ GOUP_DIR="$GOPATH/goup"
 GOROOT="$GOUP_DIR/go"
 
 mkdir -p $GOUP_DIR
-printf "export GOPATH=\"$GOPATH\" # The global dir for packages and installed binaries\n\
+printf "#!/bin/sh\n\
+# goup shell setup\n\
+export GOPATH=\"$GOPATH\" # The global dir for packages and installed binaries\n\
 export GOROOT=\"$GOROOT\" # The installed Go development kit\n\
-export PATH=\"${GOROOT}/bin:${GOPATH}/bin:\${PATH}\"\n\
+\n\
+case \":\${PATH}:\" in\n\
+    *:\"\$GOPATH/bin\":*)\n\
+        ;;\n\
+    *)\n\
+        export PATH=\"\$GOPATH/bin:\$PATH\"\n\
+        ;;\n\
+esac\n\
+\n\
+case \":\${PATH}:\" in\n\
+    *:\"\$GOROOT/bin\":*)\n\
+        ;;\n\
+    *)\n\
+        export PATH=\"\$GOROOT/bin:\$PATH\"\n\
+        ;;\n\
+esac\n\
 " > $GOUP_DIR/env
 
 echo "Compiling goup..."
