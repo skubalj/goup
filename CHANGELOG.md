@@ -1,6 +1,12 @@
 Changelog
 =========
 
+## Version 0.1.4 (2025-06-10)
+* Bump dependencies
+* Print entire error when something goes wrong
+* Add additional ARCH/OS target mappings
+* Improve PATH modification in env file from install script
+
 ## Version 0.1.3 (2025-05-19)
 * Bump dependencies
 * Apply std lib updates since last version (eg: LazyLock)
