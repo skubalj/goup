@@ -189,7 +189,6 @@ pub fn available_go_versions() -> Result<BTreeMap<GoVersion, FileInfo>> {
             group
                 .files
                 .into_iter()
-                .filter(|_| false)
                 .find(|file| file.arch == arch() && file.os == os() && file.kind == "archive")
                 .map(|f| (group.version, f))
         })

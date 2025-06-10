@@ -1,6 +1,6 @@
 [package]
 name = "goup"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Joseph Skubal"]
 repository = "https://github.com/skubalj/goup"
 description = "Version management for Go a la rustup"
