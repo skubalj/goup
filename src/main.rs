@@ -68,7 +68,7 @@ fn main() {
     };
 
     if let Err(e) = res {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {:#}", e);
     }
 }
 

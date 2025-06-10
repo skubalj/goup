@@ -5,15 +5,15 @@ use regex::Regex;
 use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use std::env::{var, VarError};
-use std::fmt::{self, Display};
+use std::env::VarError;
+use std::fmt::Display;
 use std::io::Read;
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::LazyLock;
-use std::{env, fs, io};
+use std::{env, fmt, fs, io};
 use tar::Archive;
 
 static PARSING_REGEX: LazyLock<Regex> =
@@ -131,7 +131,7 @@ pub struct FileInfo {
     // pub version: String,
     // pub sha256: String,
     pub size: u64,
-    // pub kind: String,
+    pub kind: String,
 }
 
 /// A shim that will count the number of bytes read out of the given reader and display it
@@ -178,10 +178,10 @@ impl<R: Read> Drop for ByteCounter<R> {
 
 /// Get the set of available versions of Go from Go's website.
 pub fn available_go_versions() -> Result<BTreeMap<GoVersion, FileInfo>> {
-    let available = ureq::get("https://go.dev/dl/?mode=json")
+    let available: BTreeMap<_, _> = ureq::get("https://go.dev/dl/?mode=json")
         .call()
-        .with_context(|| "Failed to request version info")?
-        .body_mut()
+        .context("Unable to query go.dev for current go versions")?
+        .into_body()
         .read_json::<Vec<VersionInfo>>()
         .with_context(|| "Unable to parse version info from remote")?
         .into_iter()
@@ -189,12 +189,21 @@ pub fn available_go_versions() -> Result<BTreeMap<GoVersion, FileInfo>> {
             group
                 .files
                 .into_iter()
-                .find(|file| file.arch == arch() && file.os == env::consts::OS)
+                .filter(|_| false)
+                .find(|file| file.arch == arch() && file.os == os() && file.kind == "archive")
                 .map(|f| (group.version, f))
         })
         .collect();
 
-    Ok(available)
+    if available.is_empty() {
+        Err(anyhow!(
+            "No versions found for target ({}, {})",
+            arch(),
+            os()
+        ))
+    } else {
+        Ok(available)
+    }
 }
 
 pub fn download_version(version: GoVersion, file: &FileInfo) -> Result<()> {
@@ -204,7 +213,7 @@ pub fn download_version(version: GoVersion, file: &FileInfo) -> Result<()> {
     if needs_install {
         let mut response_body = ureq::get(&format!("https://go.dev/dl/{}", file.filename))
             .call()
-            .with_context(|| "Failed to get version archive from go.dev")?
+            .with_context(|| format!("Failed to get version {version} from go.dev"))?
             .into_body();
         Archive::new(GzDecoder::new(ByteCounter::new(
             response_body.as_reader(),
@@ -281,16 +290,43 @@ fn arch() -> &'static str {
     match env::consts::ARCH {
         "x86" => "386",
         "x86_64" => "amd64",
+        "arm" => "arm",
         "aarch64" => "arm64",
-        "powerpc64" => "ppc64le",
+        // "" => "armv6l",
+        "loongarch64" => "loong64",
+        "mips" => "mips",
+        "mips64" => "mips64",
+        // "" => "mips64le",
+        // "" => "mipsle",
+        "powerpc64" => "ppc64",
+        // "powerpc64" => "ppc64le",
+        "riscv64" => "riscv64",
         "s390x" => "s390x",
-        _ => "",
+        _ => "unknown",
+    }
+}
+
+/// A mapping of operating system from what Rust calls it to what Go calls it
+fn os() -> &'static str {
+    match env::consts::OS {
+        "aix" => "aix",
+        "macos" => "darwin",
+        "dragonfly" => "dragonfly",
+        "freebsd" => "freebsd",
+        "illumos" => "illumos",
+        "linux" => "linux",
+        "netbsd" => "netbsd",
+        "openbsd" => "openbsd",
+        // "" => "plan9", // Plan9 is currently not a Rust target
+        "solaris" => "solaris",
+        "windows" => "windows",
+        _ => "unknown",
     }
 }
 
 /// The directory that goup uses to install Go versions and manage its internal config
 fn goup_dir() -> Result<PathBuf> {
-    match var("GOPATH") {
+    match env::var("GOPATH") {
         Ok(p) => Ok(Path::new(&p).join("goup")),
         Err(VarError::NotPresent) => Err(anyhow!("GOPATH variable is not set")),
         Err(VarError::NotUnicode(_)) => Err(anyhow!("Unable to read GOPATH variable")),
