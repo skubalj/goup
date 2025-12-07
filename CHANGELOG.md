@@ -1,9 +1,10 @@
 Changelog
 =========
 
-## Version 0.1.5 (2025-12-07)
+## Version 1.0.0 (2025-12-07)
 * Bump dependencies
 * Bump edition to 2024, incorporate new clippy lints
+* This program has been stable for ~3 years now, so bump to 1.0.
 
 ## Version 0.1.4 (2025-06-10)
 * Bump dependencies
