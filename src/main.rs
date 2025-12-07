@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand};
 use console::style;
 use std::collections::BTreeSet;
@@ -20,16 +20,16 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// List the set of available Go versions, as well as those that are installed.
+    /// List the set of available Go versions, as well as those that are installed
     List,
     /// Automatically install and enable the latest version of Go
     Update,
-    /// Install a new version of Go.
+    /// Install a new version of Go
     Install {
         /// The version of Go that will be installed
         version: GoVersion,
     },
-    /// Enable the given Go version. This can be used to roll back updates, for example.
+    /// Enable the given Go version. This can be used to roll back updates, for example
     Enable {
         /// The version of Go that will be enabled
         version: GoVersion,
@@ -171,7 +171,7 @@ fn remove(version: GoVersion) -> Result<()> {
 fn pin(version: GoVersion) -> Result<()> {
     let mut version_file = VersionFile::load()?;
     if !version_file.installed.contains(&version) {
-        return Err(anyhow!("Version {} is not installed.", version));
+        bail!("Version {} is not installed.", version);
     }
 
     version_file.pinned.insert(version);

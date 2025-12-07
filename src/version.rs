@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
@@ -230,13 +230,13 @@ pub fn download_version(version: GoVersion, file: &FileInfo) -> Result<()> {
 pub fn enable_version(version: GoVersion) -> Result<()> {
     let mut records_file = VersionFile::load()?;
     if !records_file.installed.contains(&version) {
-        return Err(anyhow!("Version {} is not installed", version));
+        bail!("Version {} is not installed", version);
     }
 
-    if let Err(e) = fs::remove_file(goup_dir()?.join("go")) {
-        if !matches!(e.kind(), io::ErrorKind::NotFound) {
-            return Err(anyhow!(e));
-        }
+    if let Err(e) = fs::remove_file(goup_dir()?.join("go"))
+        && !matches!(e.kind(), io::ErrorKind::NotFound)
+    {
+        bail!(e);
     }
 
     let res = symlink(install_dir(version)?.join("go"), goup_dir()?.join("go"))
@@ -251,9 +251,9 @@ pub fn enable_version(version: GoVersion) -> Result<()> {
 pub fn remove_version(version: GoVersion) -> Result<()> {
     let mut records_file = VersionFile::load()?;
     if !records_file.installed.remove(&version) {
-        return Err(anyhow!("Version {} is not installed", version));
+        bail!("Version {} is not installed", version);
     } else if records_file.pinned.contains(&version) {
-        return Err(anyhow!("Version {} is pinned", version));
+        bail!("Version {} is pinned", version);
     }
 
     if records_file.enabled.is_some() && records_file.enabled.unwrap() == version {

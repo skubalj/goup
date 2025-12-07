@@ -47,9 +47,11 @@ Many of the limitations of `goup` are related to the project scope. This is a
 relatively small utility and it does what I need it to do.
 
 - Currently, `goup` is primarily developed for Linux. However, it should work
-  for Mac and other Unix systems as well. Windows is explicitly not supported.
-- We download binaries from [go.dev](https://go.dev/dl), so only the currently
-  supported versions are available.
+  for Mac and other Unix systems as well. We use symbolic links to manage 
+  switching between active go versions. Windows is explicitly not supported.
+- We download official binaries from [go.dev](https://go.dev/dl), so only the
+  currently supported versions are available. Old versions remain saved to disc
+  until they are manually cleaned.
 - We only use the "archive" form for downloading, not installers, and we are
   limited in the number of ARCH/OS combinations we can support.
 - `goup` will always use the `$GOPATH/goup` folder for its files. This will
