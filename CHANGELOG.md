@@ -1,6 +1,9 @@
 Changelog
 =========
 
+## Version 1.0.1 (2026-04-25)
+* Bump dependencies to address security vulnerabilities
+
 ## Version 1.0.0 (2025-12-07)
 * Bump dependencies
 * Bump edition to 2024, incorporate new clippy lints
