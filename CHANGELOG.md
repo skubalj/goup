@@ -1,6 +1,9 @@
 Changelog
 =========
 
+## Version 1.0.2 (2026-06-04)
+* Bump dependencies to address security vulnerabilities
+
 ## Version 1.0.1 (2026-04-25)
 * Bump dependencies to address security vulnerabilities
 
