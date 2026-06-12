@@ -53,5 +53,8 @@ cargo build --release -q
 mkdir -p $GOPATH/bin
 cp ./target/release/goup "$GOPATH/bin/goup"
 
+echo "Installing Go"
+GOPATH=$GOPATH GOROOT=$GOROOT "$GOPATH/bin/goup" update
+
 echo "Installed successfully"
 echo "If this is a first-time install, add '. "$GOPATH/goup/env"' to your ~/.bashrc"

@@ -1,11 +1,11 @@
-`goup`: A Go Version Manager
-============================
+# `goup`: A Go Version Manager
 
 Downloading the official Go binaries and installing them can be pretty annoying.
 It's not hard, _per se_, but going to [go.dev](https://go.dev) and downloading
-the tarball, then going to the [install documentation](https://go.dev/doc/install)
-to find where they told you to put the files is needlessly complicated, especially
-when other languages (like Rust) have utilities for that kind of busywork (like rustup).
+the tarball, then going to the
+[install documentation](https://go.dev/doc/install) to find where they told you
+to put the files is needlessly complicated, especially when other languages
+(like Rust) have utilities for that kind of busywork (like rustup).
 
 What `goup` allows you to do is to simply check for and run updates on your Go
 installation from the command line. This makes it easy to add updating Go to an
@@ -28,7 +28,8 @@ $ goup --help # get help and see all commands
 
 ## Setup
 
-Setup can be automated by running the `install.sh` script from the root of this repository.
+Setup can be automated by running the `install.sh` script from the root of this
+repository.
 
 ```bash
 git clone https://github.com/skubalj/goup.git
@@ -36,10 +37,11 @@ cd goup
 ./install.sh
 ```
 
-This script will install goup to `$GOPATH/bin`. You can customize the location of GOPATH by
-specifying the variable when running this script. As this script can be used to bootstrap a system
-with no existing go installation, it will create an environment variable file that can be called 
-from your `~/.bashrc` to configure your shell.
+This script will install goup to `$GOPATH/bin`. You can customize the location
+of GOPATH by specifying the variable when running this script. As this script
+can be used to bootstrap a system with no existing go installation, it will
+create an environment variable file that can be called from your `~/.bashrc` to
+configure your shell.
 
 ## Limitations
 
@@ -47,7 +49,7 @@ Many of the limitations of `goup` are related to the project scope. This is a
 relatively small utility and it does what I need it to do.
 
 - Currently, `goup` is primarily developed for Linux. However, it should work
-  for Mac and other Unix systems as well. We use symbolic links to manage 
+  for Mac and other Unix systems as well. We use symbolic links to manage
   switching between active go versions. Windows is explicitly not supported.
 - We download official binaries from [go.dev](https://go.dev/dl), so only the
   currently supported versions are available. Old versions remain saved to disc
@@ -81,4 +83,4 @@ And a special thanks is due to the rustup team for inspiration!
 
 This project is licensed under the Mozilla Public License V2.
 
-Joseph Skubal 2022-2025
+Joseph Skubal 2022-2026
